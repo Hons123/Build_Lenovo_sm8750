@@ -1,4 +1,4 @@
-name: Build_Lenovo_SukiSU
+name: Build_Lenovo_ikunSU
 
 env:
   gz_branch: 'heads'
