@@ -12,7 +12,8 @@ on:
         options:
           - '6.6.56'
           - '6.6.89'
-        default: '6.6.89'
+          - '6.6.102'
+        default: '6.6.102'
 
       custom_kernel_suffix:
         description: "✏️ 自定义内核名称 (留空默认官核名称)"
