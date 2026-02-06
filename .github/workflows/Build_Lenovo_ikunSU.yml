@@ -69,7 +69,7 @@ jobs:
               echo "releases=ColorOS_16_400_OPD_Boot" >> $GITHUB_ENV
               ;;
             6.6.102)
-              echo "os_patch_level=2026-01" >> $GITHUB_ENV
+              echo "os_patch_level=2025-06" >> $GITHUB_ENV
               echo "releases=TB322FC_1.5.10.096" >> $GITHUB_ENV
               ;;
           esac
