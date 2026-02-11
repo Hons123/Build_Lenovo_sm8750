@@ -8,8 +8,8 @@ on:
         type: choice
         options:
           - 'SukiSU'
-          - 'ikunSU'
-        default: 'ikunSU'
+          - 'ReSukiSU'
+        default: 'ReSukiSU'
         
       kernel_version:
         description: "📝请选择要编译的版本："
@@ -218,10 +218,10 @@ jobs:
         run: |
             cd kernel_workspace
             echo "正在配置${{ env.KSU_TYPE }}..."
-            if [ "${{ env.KSU_TYPE }}" == 'ikunSU' ]; then
-              curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s main
+            if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
+              curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/refs/heads/main/kernel/setup.sh" | bash -s main
             else
-              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
+              curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
               cd ./KernelSU
               GIT_COMMIT_HASH=$(git rev-parse --short=8 HEAD)
               echo "当前提交哈希: $GIT_COMMIT_HASH"
@@ -256,12 +256,12 @@ jobs:
       - name: 🔧 Set up SUSFS (配置 SUSFS)
         run: |
           cd kernel_workspace
-          if [ "${{ env.KSU_TYPE }}" == 'ikunSU' ]; then
+          if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
             git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android15-6.6
             cd KernelSU 
             git config --global user.email "qiudaoyu2888@gmail.com"
             git config --global user.name "Q1udaoyu"
-            git revert 60d404af9d5a1d009a6b8fe8224d612609f31d46
+            git revert e16cf610855b73fd248d9e3609cd993ec667de02
             KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
@@ -350,7 +350,7 @@ jobs:
           cd kernel_workspace
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          printf '%s\n' 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >>  ./common/arch/arm64/configs/gki_defconfig
+          printf '%s\n' 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-TG@qdykernel"' >>  ./common/arch/arm64/configs/gki_defconfig
           
           if [ "${{ env.ENABLE_KPM }} " = "true" ]; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -358,9 +358,9 @@ jobs:
             echo "CONFIG_KPM=n" >> ./common/arch/arm64/configs/gki_defconfig
           fi
 
-          if [ "${{ env.KSU_TYPE }}" == 'ikunSU' ]; then
+          if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
             echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >> ./common/arch/arm64/configs/gki_defconfig
+            echo 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-TG@qdykernel"' >> ./common/arch/arm64/configs/gki_defconfig
           fi
           
           echo "CONFIG_CRYPTO_LZ4=y" >> ./common/arch/arm64/configs/gki_defconfig
