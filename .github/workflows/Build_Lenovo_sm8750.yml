@@ -358,7 +358,7 @@ jobs:
             echo "CONFIG_KPM=n" >> ./common/arch/arm64/configs/gki_defconfig
           fi
 
-          if [ "${{ env.KSU_TYPE }}" == 'ReSukiSU' ]; then
+          if [ "${{ env.KSU_TYPE }}" == 'ikunSU' ]; then
             echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >> ./common/arch/arm64/configs/gki_defconfig
           fi
