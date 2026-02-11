@@ -261,7 +261,7 @@ jobs:
             cd KernelSU 
             git config --global user.email "qiudaoyu2888@gmail.com"
             git config --global user.name "Q1udaoyu"
-            git revert e16cf610855b73fd248d9e3609cd993ec667de02
+            git revert 60d404af9d5a1d009a6b8fe8224d612609f31d46
             KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
