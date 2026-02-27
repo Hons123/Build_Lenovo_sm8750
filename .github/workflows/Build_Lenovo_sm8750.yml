@@ -9,7 +9,7 @@ on:
         options:
           - 'SukiSU'
           - 'ReSukiSU'
-        default: 'ReSukiSU'
+        default: 'SukiSU'
         
       kernel_version:
         description: "📝请选择要编译的版本："
@@ -225,13 +225,13 @@ jobs:
               echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
               echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
             else
-              curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
+              curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
               cd ./KernelSU
               GIT_COMMIT_HASH=$(git rev-parse --short=8 HEAD)
               echo "当前提交哈希: $GIT_COMMIT_HASH"
               export KSU_VERSION=$KSU_VERSION
               for i in {1..3}; do
-                KSU_API_VERSION=$(curl -s "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/builtin/kernel/Kbuild" | 
+                KSU_API_VERSION=$(curl -s "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/builtin/kernel/Kbuild" | 
                   grep -m1 "KSU_VERSION_API :=" | 
                   awk -F'= ' '{print $2}' | 
                   tr -d '[:space:]')
@@ -239,7 +239,7 @@ jobs:
               done
               [ -z "$KSU_API_VERSION" ] && KSU_API_VERSION="4.1.0"
               echo "KSU_API_VERSION=$KSU_API_VERSION" >> $GITHUB_ENV
-              VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'-TG@qdykernel\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'-TG@qdykernel'
+              VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'-@Hons百年\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'-@Hons百年'
               
               sed -i '/define get_ksu_version_full/,/endef/d' kernel/Kbuild
               sed -i '/KSU_VERSION_API :=/d' kernel/Kbuild
@@ -294,7 +294,7 @@ jobs:
           cd kernel_workspace
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          printf '%s\n' 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-TG@qdykernel"' >>  ./common/arch/arm64/configs/gki_defconfig
+          printf '%s\n' 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >>  ./common/arch/arm64/configs/gki_defconfig
 
           echo "ENABLE_KPM='${{ env.ENABLE_KPM }}'"
           if [ "${{ env.ENABLE_KPM }}" = "true" ]; then
@@ -305,7 +305,7 @@ jobs:
 
           if [ "${{ env.KSU_TYPE }}" = "ReSukiSU" ]; then
             echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-TG@qdykernel"' >> ./common/arch/arm64/configs/gki_defconfig
+            echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >> ./common/arch/arm64/configs/gki_defconfig
           fi
           
           echo "CONFIG_CRYPTO_LZ4=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -480,7 +480,7 @@ jobs:
         run: |
           echo "正在应用KPM并修补内核..."
           cd kernel_workspace/common/out/arch/arm64/boot
-          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
+          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.13.0/patch_linux
           chmod +x patch_linux
           ./patch_linux
           rm -f Image
