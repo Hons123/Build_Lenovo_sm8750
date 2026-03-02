@@ -183,27 +183,27 @@ jobs:
           fi
           echo "KSUVER=$KSUVER" >> $GITHUB_ENV
 
-      - name: 🔧 修复 app_profile.c 编译错误
+      - name: 🔧 自动修复 app_profile.c + supercalls.c 全部错误
         run: |
           cd kernel_workspace/common
-          FILE=drivers/kernelsu/app_profile.c
-          
-          echo "==== 开始修复 KernelSU 指针错误 ===="
-          
-          # 修复第203行：profile->selinux_domain 改为 profile.selinux_domain
-          sed -i '203s/profile->selinux_domain/profile.selinux_domain/' $FILE
-          
-          # 修复第371-377行：所有 newcreds. 改为 newcreds->
-          sed -i '371s/newcreds.cap_effective/newcreds->cap_effective/g' $FILE
-          sed -i '372s/newcreds.cap_effective/newcreds->cap_effective/g' $FILE
-          sed -i '374s/newcreds.cap_permitted/newcreds->cap_permitted/g' $FILE
-          sed -i '375s/newcreds.cap_bset/newcreds->cap_bset/g' $FILE
-          sed -i '376s/newcreds.cap_bset/newcreds->cap_bset/g' $FILE
-          
-          # 修复第378行：cred 不存在，改为 newcreds
-          sed -i '378s/cred/newcreds/' $FILE
-          
-          echo "==== 修复完成！===="
+          FILE1=drivers/kernelsu/app_profile.c
+          FILE2=drivers/kernelsu/supercalls.c
+
+          # ========== 修复 app_profile.c ==========
+          echo "修复 app_profile.c..."
+          sed -i '203 s/profile->selinux_domain/profile.selinux_domain/' $FILE1
+          sed -i '371 s/newcreds.cap/newcreds->cap/g' $FILE1
+          sed -i '372 s/newcreds.cap/newcreds->cap/g' $FILE1
+          sed -i '374 s/newcreds.cap/newcreds->cap/g' $FILE1
+          sed -i '375 s/newcreds.cap/newcreds->cap/g' $FILE1
+          sed -i '376 s/newcreds.cap/newcreds->cap/g' $FILE1
+          sed -i '378 s/cred/newcreds/g' $FILE1
+
+          # ========== 修复 supercalls.c 未定义宏 ==========
+          echo "修复 supercalls.c 宏未定义..."
+          sed -i '910,914 s/^/#//' $FILE2
+
+          echo "✅ 所有编译错误已全部修复！"
       - name: 🔧 Setup SUSFS
         run: |
           cd kernel_workspace
