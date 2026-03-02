@@ -1,23 +1,17 @@
-name: Build_ikun_sm8750
+name: Build_Lenovo_ikunSU
+
+env:
+  gz_branch: 'heads'
 on:
   workflow_dispatch:
     inputs:
-      ksu_type:
-        description: "📝请选择要集成的KSU："
-        required: true
-        type: choice
-        options:
-          - 'ikunSU'
-        default: 'ikunSU'
-        
-      kernel_version:
+      sub_level:
         description: "📝请选择要编译的版本："
         required: true
         type: choice
         options:
           - '6.6.56'
           - '6.6.89'
-          - '6.6.102'
         default: '6.6.89'
 
       custom_kernel_suffix:
@@ -30,47 +24,41 @@ on:
         required: false
         default: ''
 
-      enable_bbg:
+      enable_feature_a:
         description: "开启BBG基带守护"
         required: false
         default: false
         type: boolean
 
-      enable_kpm:
+      enable_feature_b:
         description: "开启KPM"
         required: false
         default: true
         type: boolean
 
-      enable_signed:
+      enable_feature_c:
         description: "使用AOSP密钥签名boot"
         required: false
-        default: false
+        default: true
         type: boolean
 
       
        
 jobs:
   build:
-    name: Build_${{ github.event.inputs.KERNEL_VERSION }}
+    name: Build_${{ github.event.inputs.sub_level }}
     runs-on: ubuntu-latest
-    env:
-      gz_branch: 'heads'
-      KSU_TYPE:           ${{ github.event.inputs.ksu_type }}
-      KERNEL_VERSION:           ${{ github.event.inputs.kernel_version }}
-      CUSTOM_KERNEL_SUFFIX:   ${{ github.event.inputs.custom_kernel_suffix }}
-      CUSTOM_KERNEL_TIME: ${{ github.event.inputs.custom_kernel_time }}
-      ENABLE_BBG:       ${{ github.event.inputs.enable_bbg }}
-      ENABLE_KPM:       ${{ github.event.inputs.enable_kpm }}
-      ENABLE_SIGNED:       ${{ github.event.inputs.enable_signed }}
+    outputs:
+      ksuver: ${{ steps.ksu_version.outputs.ksuver }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: ⚙️ Set Kernel version config(设置对应内核版本配置文件)
         run: |
-          echo "KERNEL_TIME=${{ env.CUSTOM_KERNEL_TIME }} " >> $GITHUB_ENV
-          case "${{ env.KERNEL_VERSION }}" in
+          echo "sub_level=${{ github.event.inputs.sub_level }}" >> $GITHUB_ENV
+          echo "KERNEL_TIME=${{ github.event.inputs.custom_kernel_time }}" >> $GITHUB_ENV
+          case "${{ github.event.inputs.sub_level }}" in
             6.6.56)
               echo "os_patch_level=2024-11" >> $GITHUB_ENV
               echo "releases=TB322FC_1.1.11.120" >> $GITHUB_ENV
@@ -79,42 +67,32 @@ jobs:
               echo "os_patch_level=2025-06" >> $GITHUB_ENV
               echo "releases=ColorOS_16_400_OPD_Boot" >> $GITHUB_ENV
               ;;
-            6.6.102)
-              echo "os_patch_level=2025-10" >> $GITHUB_ENV
-              echo "releases=TB322FC_1.5.10.096" >> $GITHUB_ENV
-              ;;
           esac
-           if [ -z "${{ env.CUSTOM_KERNEL_SUFFIX }}" ]; then
-            case "${{ env.KERNEL_VERSION }}" in
+           if [ -z "${{ github.event.inputs.custom_kernel_suffix }}" ]; then
+            case "${{ github.event.inputs.sub_level }}" in
               6.6.56)
                 echo 'DEFAULT_SUFFIX=-android15-8-g38447e018c92-ab12829524-4k' >> $GITHUB_ENV
                 ;;
               6.6.89)
                 echo 'DEFAULT_SUFFIX=-android15-8-g14220ae4ce65-ab13680582-4k' >> $GITHUB_ENV
                 ;;
-              6.6.102)
-                echo 'DEFAULT_SUFFIX=-android15-8-g06bc416365ef-ab14559830-4k' >> $GITHUB_ENV
-                ;;
             esac
           else
-            echo "使用自定义名称: ${{ env.CUSTOM_KERNEL_SUFFIX }}"
-            echo "DEFAULT_SUFFIX=${{ env.CUSTOM_KERNEL_SUFFIX }}" >> $GITHUB_ENV
+            echo "使用自定义名称: ${{ github.event.inputs.custom_kernel_suffix }}"
+            echo "DEFAULT_SUFFIX=${{ github.event.inputs.custom_kernel_suffix }}" >> $GITHUB_ENV
           fi
-          if [ -z "${{ env.CUSTOM_KERNEL_TIME }}" ]; then
-            case "${{ env.KERNEL_VERSION }}" in
+          if [ -z "${{ github.event.inputs.custom_kernel_time }}" ]; then
+            case "${{ github.event.inputs.sub_level }}" in
               6.6.56)
                 echo 'KERNEL_TIME=Thu Dec 19 17:58:46 UTC 2024' >> $GITHUB_ENV
                 ;;
               6.6.89)
                 echo 'KERNEL_TIME=Mon Jun 23 07:30:57 UTC 2025' >> $GITHUB_ENV
                 ;;
-              6.6.102)
-                echo 'KERNEL_TIME=Tue Dec 9 15:43:22 UTC 2025' >> $GITHUB_ENV
-                ;;
             esac
           else
-            echo "使用自定义构建时间: ${{ env.CUSTOM_KERNEL_TIME }}"
-            echo "KERNEL_TIME=${{ env.CUSTOM_KERNEL_TIME }}" >> $GITHUB_ENV
+            echo "使用自定义构建时间: ${{ github.event.inputs.custom_kernel_time }}"
+            echo "KERNEL_TIME=${{ github.event.inputs.custom_kernel_time }}" >> $GITHUB_ENV
           fi
 
       - name: 🛠 Install dependencies and Initialize repo and sync （安装环境依赖+初始化源码仓库及工具链）
@@ -151,30 +129,28 @@ jobs:
           echo "所有源码及llvm-Clang18工具链初始化完成！"
           echo "正在去除 ABI 保护 & 去除 dirty 后缀..."
           rm common/android/abi_gki_protected_exports_* || true
-          # if [[ "${{ env.KERNEL_VERSION }}" != "6.6.102" ]]; then
-            for f in common/scripts/setlocalversion; do
-              sed -i 's/ -dirty//g' "$f"
-              sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
-            done
-          # fi
+          for f in common/scripts/setlocalversion; do
+            sed -i 's/ -dirty//g' "$f"
+            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
+          done
 
       - name: 🛠 Set ccache DIR(配置ccache目录)
         run: |
-          echo "CCACHE_DIR=$HOME/.ccache_${{ env.KERNEL_VERSION }}" >> $GITHUB_ENV
+          echo "CCACHE_DIR=$HOME/.ccache_${{ env.sub_level }}" >> $GITHUB_ENV
           echo "CCACHE_MAXSIZE=3G" >> $GITHUB_ENV
           echo "当前磁盘空间："
           df -h
-          echo "当前构建内核版本：${{ env.KERNEL_VERSION }}"
+          echo "当前构建内核版本：${{ env.sub_level }}"
 
       - name: 📥 Restore ccache (载入当前内核版本的ccache缓存)
         uses: actions/cache@v4
         id: ccache-restore
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ env.KSU_TYPE }}-${{ env.KERNEL_VERSION }}-${{ runner.os }}-main
+          key: ccache-neov4-${{ env.sub_level }}-${{ runner.os }}-main
           restore-keys: |
-            ccache-${{ env.KSU_TYPE }}-${{ env.KERNEL_VERSION }}-${{ runner.os }}-
-            ccache-${{ env.KSU_TYPE }}-${{ env.KERNEL_VERSION }}-
+            ccache-neov4-${{ env.sub_level }}-${{ runner.os }}-
+            ccache-neov4-${{ env.sub_level }}-
       
       - name: 📥 Init ccache (初始化并配置ccache)
         run: |
@@ -204,7 +180,7 @@ jobs:
             ccache -sv
           fi
       - name: 🛠 Set Baseband-guard (配置BBG基带守护)
-        if: ${{ env.ENABLE_BBG == 'true' }}
+        if: ${{inputs.enable_feature_a}}
         run: |
           echo "正在启用启用内核级基带保护支持…"
           cd kernel_workspace
@@ -213,64 +189,83 @@ jobs:
           sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/lockdown/lockdown,baseband_guard/ } }' ./common/security/Kconfig
 
       
-      - name: ⚙️ Set ${{ env.KSU_TYPE }} (设置${{ env.KSU_TYPE }})
+      - name: ⚙️ Set SuKiSU Ultra (设置SuKiSU Ultra)
+        id: ksu_version
         run: |
             cd kernel_workspace
-            echo "正在配置${{ env.KSU_TYPE }}..."
-            if [ "${{ env.KSU_TYPE }}" == 'ikunSU' ]; then
-              curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s main
-              cd ./KernelSU 
-              KSU_VERSION=$(expr $(git rev-list --count main) + 30700 2>/dev/null || echo 114514)
-              echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-              echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
-            else
-              curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
-              cd ./KernelSU
-              GIT_COMMIT_HASH=$(git rev-parse --short=8 HEAD)
-              echo "当前提交哈希: $GIT_COMMIT_HASH"
-              export KSU_VERSION=$KSU_VERSION
-              for i in {1..3}; do
-                KSU_API_VERSION=$(curl -s "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/builtin/kernel/Kbuild" | 
-                  grep -m1 "KSU_VERSION_API :=" | 
-                  awk -F'= ' '{print $2}' | 
-                  tr -d '[:space:]')
-                [ -n "$KSU_API_VERSION" ] && break || sleep 1
-              done
-              [ -z "$KSU_API_VERSION" ] && KSU_API_VERSION="4.1.0"
-              echo "KSU_API_VERSION=$KSU_API_VERSION" >> $GITHUB_ENV
-              VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'-@Hons百年\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'-@Hons百年'
-              
-              sed -i '/define get_ksu_version_full/,/endef/d' kernel/Kbuild
-              sed -i '/KSU_VERSION_API :=/d' kernel/Kbuild
-              sed -i '/KSU_VERSION_FULL :=/d' kernel/Kbuild
-              awk -v def="$VERSION_DEFINITIONS" '
-                /REPO_OWNER :=/ {print; print def; inserted=1; next}
-                1
-                END {if (!inserted) print def}
-              ' kernel/Kbuild > kernel/Kbuild.tmp && mv kernel/Kbuild.tmp kernel/Kbuild
-              KSU_VERSION=$(expr $(git rev-list --count main) + 37185 2>/dev/null || echo 114514)
-              echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-              echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
-              grep -A10 "REPO_OWNER" kernel/Kbuild
-              grep "KSU_VERSION_FULL" kernel/Kbuild
-              echo "SukiSU版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}-@Hons百年"
-            fi
+            echo "正在配置SukiSU Ultra..."
+            curl -LSs "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/refs/heads/main/kernel/setup.sh" | bash -s builtin
+            cd ./KernelSU
+            # 获取当前 Git 提交的短哈希 (8位)
+            GIT_COMMIT_HASH=$(git rev-parse --short=8 HEAD)
+            echo "当前提交哈希: $GIT_COMMIT_HASH"
+            export KSU_VERSION=$KSU_VERSION
+            # 尝试最多 3 次获取 KernelSU API 版本号
+            for i in {1..3}; do
+              # 从远程 Kbuild 中提取 KSU_API_VERSION
+              KSU_API_VERSION=$(curl -s "https://raw.githubusercontent.com/Hons123/SukiSU-Ultra/builtin/kernel/Kbuild" | 
+                # 查找第一个包含版本定义的行
+                grep -m1 "KSU_VERSION_API :=" | 
+                # 提取等号后的值
+                awk -F'= ' '{print $2}' | 
+                # 删除所有空白字符
+                tr -d '[:space:]')
+              # 如果成功获取到版本号则跳出循环，否则等待 1 秒后重试
+              [ -n "$KSU_API_VERSION" ] && break || sleep 1
+            done
+            # 如果获取失败，使用默认版本号 3.1.7
+            [ -z "$KSU_API_VERSION" ] && KSU_API_VERSION="3.1.7"
+            # 将 API 版本号存储到 GitHub 环境变量
+            echo "KSU_API_VERSION=$KSU_API_VERSION" >> $GITHUB_ENV
+            # 创建版本定义模板&版本格式函数: 使用获取的提交哈希和固定后缀
+            # KSU_VERSION_API: API 版本定义
+            # KSU_VERSION_FULL: 完整版本定义
+            VERSION_DEFINITIONS=$'define get_ksu_version_full\nv\\$1-'"$GIT_COMMIT_HASH"$'-酷安@Hons百年\nendef\n\nKSU_VERSION_API := '"$KSU_API_VERSION"$'\nKSU_VERSION_FULL := v'"$KSU_API_VERSION"$'-'"$GIT_COMMIT_HASH"$'-酷安@Hons百年'
+            # 清理内核 Kbuild 中的旧版本定义
+            # 删除版本函数
+            sed -i '/define get_ksu_version_full/,/endef/d' kernel/Kbuild
+            # 删除 API 版本定义
+            sed -i '/KSU_VERSION_API :=/d' kernel/Kbuild
+            # 删除完整版本定义
+            sed -i '/KSU_VERSION_FULL :=/d' kernel/Kbuild
+            # 在 REPO_OWNER 行后插入新版本定义
+            awk -v def="$VERSION_DEFINITIONS" '
+              # 当找到 REPO_OWNER 行时，插入版本定义并设置标记
+              /REPO_OWNER :=/ {print; print def; inserted=1; next}
+              # 打印所有行
+              1
+              # 如果未找到插入点，在文件末尾追加
+              END {if (!inserted) print def}
+            ' kernel/Kbuild > kernel/Kbuild.tmp && mv kernel/Kbuild.tmp kernel/Kbuild
+  
+            # 生成自定义版本号（基于提交计数）, 失败时使用 114514
+            KSU_VERSION=$(expr $(git rev-list --count main) + 37185 2>/dev/null || echo 114514)
+            # 存储版本号到 GitHub 环境变量
+            echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+            echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
+  
+            # 验证修改结果
+            grep -A10 "REPO_OWNER" kernel/Kbuild  # 检查插入点后的内容
+            grep "KSU_VERSION_FULL" kernel/Kbuild # 确认版本定义存在
+            echo "SukiSU版本号: v${KSU_API_VERSION}-${GIT_COMMIT_HASH}-酷安@Hons百年"
 
       - name: 🔧 Set up SUSFS (配置 SUSFS)
         run: |
           cd kernel_workspace
-          git clone --depth=1 https://github.com/cctv18/susfs4oki.git susfs4ksu -b oki-android15-6.6
-          wget https://raw.githubusercontent.com/cctv18/oppo_oplus_realme_sm8750/main/other_patch/69_hide_stuff.patch -O ./common/69_hide_stuff.patch
+          echo "正在添加SukiSU Ultra补丁..."
+          git clone https://github.com/ShirkNeko/susfs4ksu.git -b gki-android15-6.6
+          git clone https://github.com/ShirkNeko/SukiSU_patch.git
           cp ./susfs4ksu/kernel_patches/50_add_susfs_in_gki-android15-6.6.patch ./common/
           cp ./susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ./susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          cp ./SukiSU_patch/hooks/scope_min_manual_hooks_v1.6.patch ./common/
+          cp ./SukiSU_patch/69_hide_stuff.patch ./common/
           cd ./common
           patch -p1 < 50_add_susfs_in_gki-android15-6.6.patch || true
-          patch -p1 -N -F 3 < 69_hide_stuff.patch || true
-          case "${{ env.KERNEL_VERSION }}" in
+          patch -p1 < 69_hide_stuff.patch || true
+          case "${{ github.event.inputs.sub_level }}" in
             6.6.56)
-              echo "[INFO] 当前构建内核版本为6.6.56，正在修复 undeclared identifier 'vma' 编译错误"
-              cd ./common/fs/proc
+              cd ./fs/proc
               sed -i 's/vma = find_vma(mm, start_vaddr);/struct vm_area_struct *vma = find_vma(mm, start_vaddr);/' task_mmu.c
               ;;
           esac
@@ -289,24 +284,17 @@ jobs:
 
           
       - name: 🔧 Set gki_defconfig (设置编译配置)
+        env:
+          ENABLE_B: ${{ github.event.inputs.enable_feature_b }} 
         run: |
           cd kernel_workspace
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          printf '%s\n' 'KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >>  ./common/arch/arm64/configs/gki_defconfig
-
-          echo "ENABLE_KPM='${{ env.ENABLE_KPM }}'"
-          if [ "${{ env.ENABLE_KPM }}" = "true" ]; then
+          # Add VFS configuration settings
+          if [ "$ENABLE_B" = "true" ]; then
             echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
           else
             echo "CONFIG_KPM=n" >> ./common/arch/arm64/configs/gki_defconfig
           fi
-
-          if [ "${{ env.KSU_TYPE }}" = "ReSukiSU" ]; then
-            echo "CONFIG_KSU_MULTI_MANAGER_SUPPORT=y" >> ./common/arch/arm64/configs/gki_defconfig
-            echo 'CONFIG_KSU_FULL_NAME_FORMAT="%TAG_NAME%-%COMMIT_SHA%-Re-@Hons百年"' >> ./common/arch/arm64/configs/gki_defconfig
-          fi
-          
           echo "CONFIG_CRYPTO_LZ4=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -388,26 +376,27 @@ jobs:
           echo "FAKETIME=$FAKETIME" >> $GITHUB_ENV
           SO_DIR=$(pwd)
           export PRELOAD_LIBS="$SO_DIR/libfakestat.so $SO_DIR/libfaketimeMT.so"
-          
+          #创建 CC (编译器) 包装器
           echo '#!/bin/bash' > cc-wrapper
           echo 'export LD_PRELOAD="'$PRELOAD_LIBS'"' >> cc-wrapper
           echo 'export FAKESTAT="'$FAKESTAT'"' >> cc-wrapper
           echo 'export FAKETIME="'$FAKETIME'"' >> cc-wrapper
           echo 'ccache clang "$@"' >> cc-wrapper
-          
+          #创建 LD (链接器) 包装器
           echo '#!/bin/bash' > ld-wrapper
           echo 'export LD_PRELOAD="'$PRELOAD_LIBS'"' >> ld-wrapper
           echo 'export FAKESTAT="'$FAKESTAT'"' >> ld-wrapper
           echo 'export FAKETIME="'$FAKETIME'"' >> ld-wrapper
           echo 'ld.lld "$@"' >> ld-wrapper
           
+          # 测试时间劫持测试是否正常工作
           echo "--- [Wrapper Test] 正在创建通用的时间劫持测试脚本 ---"
           echo '#!/bin/bash' > test-wrapper.sh
           echo 'export LD_PRELOAD="'$PRELOAD_LIBS'"' >> test-wrapper.sh
           echo 'export FAKESTAT="'$FAKESTAT'"' >> test-wrapper.sh
           echo 'export FAKETIME="'$FAKETIME'"' >> test-wrapper.sh
           echo 'echo ">>> Wrapper 内部环境检查完毕."' >> test-wrapper.sh
-          echo 'exec "$@"' >> test-wrapper.sh
+          echo 'exec "$@"' >> test-wrapper.sh # 执行所有传入的参数
           chmod +x test-wrapper.sh
           echo "--- [Wrapper Test] 正在测试 (date) 命令 ---"
           ./test-wrapper.sh date
@@ -418,52 +407,18 @@ jobs:
           echo "--- 编译前环境时间: $(LD_PRELOAD=$PRELOAD_LIBS date) ---"
           echo "--- 编译前环境文件时间戳: ---"
           LD_PRELOAD=$PRELOAD_LIBS stat ./Makefile
-          
+
           export KBUILD_BUILD_TIMESTAMP="${KERNEL_TIME}"
           
+          #在构建内核的同时清除不必要的.NET, Android NDK, Haskell, CodeQL运行库，清理空间且不阻塞后续步骤运行
           sudo rm -rf /usr/share/dotnet &
           sudo rm -rf /usr/local/lib/android &
           sudo rm -rf /opt/ghc &
           sudo rm -rf /opt/hostedtoolcache/CodeQL &
-          
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="ccache clang" LD="ld.lld" HOSTLD=ld.lld O=out KCFLAGS+=-O2 KCFLAGS+=-Wno-error gki_defconfig &&
-          
-          ### ===== 调试插入开始（第一阶段后） =====
-          echo "========== 第一阶段完成 =========="
-          echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH"
-          echo "KBUILD_BUILD_TIMESTAMP=$KBUILD_BUILD_TIMESTAMP"
-          if [ -f out/init/version-timestamp.c ]; then
-            echo ">>> 找到 version-timestamp.c"
-            echo "----- 文件内容开始 -----"
-            cat out/init/version-timestamp.c
-            echo "----- 文件内容结束 -----"
-            echo ">>> 文件 stat 信息："
-            stat out/init/version-timestamp.c
-          else
-            echo ">>> 未找到 version-timestamp.c"
-            find out -name version-timestamp.c
-          fi
-          echo "==================================="
-          ### ===== 调试插入结束 =====
-          
           make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC="$(pwd)/cc-wrapper" LD="$(pwd)/ld-wrapper" HOSTLD=ld.lld O=out KCFLAGS+=-O2 KCFLAGS+=-Wno-error Image
           
-          ### ===== 调试插入开始（第二阶段后） =====
-          echo "========== 第二阶段完成 =========="
-          if [ -f out/init/version-timestamp.c ]; then
-            echo ">>> 当前 version-timestamp.c 内容"
-            echo "----- 文件内容开始 -----"
-            cat out/init/version-timestamp.c
-            echo "----- 文件内容结束 -----"
-            echo ">>> 文件 stat 信息："
-            stat out/init/version-timestamp.c
-          else
-            echo ">>> 未找到 version-timestamp.c"
-            find out -name version-timestamp.c
-          fi
-          echo "==================================="
-          ### ===== 调试插入结束 =====
-          
+          # 编译后时间劫持二次校验
           echo "--- 编译后环境时间: $(LD_PRELOAD=$PRELOAD_LIBS date) ---"
           echo "--- 编译后环境文件时间戳: ---"
           LD_PRELOAD=$PRELOAD_LIBS stat ./Makefile
@@ -473,13 +428,12 @@ jobs:
           echo "编译后空间:"
           df -h
 
-
       - name: 📦 Apply KPM and patch the kernel (应用KPM并修补内核)
-        if: ${{ env.ENABLE_KPM == 'true' }}
+        if: ${{inputs.enable_feature_b}}
         run: |
           echo "正在应用KPM并修补内核..."
           cd kernel_workspace/common/out/arch/arm64/boot
-          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.13.0/patch_linux
+          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
           chmod +x patch_linux
           ./patch_linux
           rm -f Image
@@ -497,7 +451,7 @@ jobs:
          path: kernel_workspace/common/out/arch/arm64/boot/kernel
          
       - name: 📦 Sign boot using AOSP test key (使用AOSP测试密钥签名boot)
-        if: ${{ env.ENABLE_SIGNED == 'true' }}
+        if: ${{inputs.enable_feature_c}}
         run: |
           cd kernel_workspace
           aria2c -s16 -x16 -k1M "https://github.com/showdo/AOSP-Testkey-BootSigner/archive/refs/heads/main.tar.gz" -o boot_avb_tool.tar.gz && \
@@ -514,8 +468,8 @@ jobs:
           python3 rebuild_avb.py --chained-mode
 
       - name: 📤 Upload Signed boot (上传已签名的 boot)
-        if: ${{ env.ENABLE_SIGNED == 'true' }}
+        if: ${{inputs.enable_feature_c}}
         uses: actions/upload-artifact@v4
         with:
-         name: Boot_${{ env.KSUVER }}_${{ env.KERNEL_VERSION }}_${{ env.KSU_TYPE }}_AOSP_Signed
+         name: Boot_${{ env.KSUVER }}_${{ env.sub_level }}_SuKiSU_AOSP_Signed
          path: kernel_workspace/boot_avb_tool/AOSP-Testkey-BootSigner-main/boot.img
