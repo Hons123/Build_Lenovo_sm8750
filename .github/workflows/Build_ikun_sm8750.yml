@@ -39,7 +39,7 @@ on:
       enable_feature_c:
         description: "使用AOSP密钥签名boot"
         required: false
-        default: true
+        default: false
         type: boolean
 
       
@@ -128,11 +128,16 @@ jobs:
           wait
           echo "所有源码及llvm-Clang18工具链初始化完成！"
           echo "正在去除 ABI 保护 & 去除 dirty 后缀..."
-          rm common/android/abi_gki_protected_exports_* || true
-          for f in common/scripts/setlocalversion; do
-            sed -i 's/ -dirty//g' "$f"
-            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$f"
-          done
+          if [ -f "common/scripts/setlocalversion" ]; then
+            chmod +x common/scripts/setlocalversion
+            sed -i 's/ -dirty//g' common/scripts/setlocalversion
+            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' common/scripts/setlocalversion
+          else
+            echo "setlocalversion 文件不存在，跳过修改"
+          fi
+
+          # 安全删除 ABI 文件（不存在也不报错）
+          rm -f common/android/abi_gki_protected_exports_* 2>/dev/null || true
 
       - name: 🛠 Set ccache DIR(配置ccache目录)
         run: |
